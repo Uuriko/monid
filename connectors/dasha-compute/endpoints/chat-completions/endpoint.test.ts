@@ -1,6 +1,7 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertRejects } from "@std/assert";
 import { fromFileUrl } from "@std/path";
 import {
+    assertInputAccepted,
     liveSkip,
     loadFixture,
     runEndpoint,
@@ -104,4 +105,32 @@ Deno.test({
         assertEquals(result.httpStatus, 200);
         assertEquals(result.usage.credits, { default: 0.05 });
     },
+});
+
+Deno.test("dasha-compute#chat/completions schema gate: max_tokens cap 4096", async () => {
+    const unit = await testSealedUnit("dasha-compute#chat/completions");
+    const fixture = await loadFixture(`${fixturesDir}synthetic-happy.json`);
+    const baseBody = {
+        model: "qwen3-32b",
+        messages: [{ role: "user" as const, content: "hi" }],
+    };
+    // near-valid bad input: one past the documented cap
+    await assertRejects(
+        () =>
+            runEndpoint({
+                unit,
+                input: { body: { ...baseBody, max_tokens: 4097 } },
+                mode: "replay",
+                fixture,
+            }),
+        Error,
+        "INVALID_INPUT",
+    );
+    // passing near-twin: the boundary value itself clears the gate
+    await assertInputAccepted({
+        unit,
+        input: { body: { ...baseBody, max_tokens: 4096 } },
+        mode: "replay",
+        fixture,
+    });
 });
