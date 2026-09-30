@@ -35,9 +35,11 @@ export default defineEndpoint({
         notes: [
             "Usage in the response is the worker-reported token count; " +
             "billing is flat per call, never per token.",
-            "Idempotent retry: send the same Idempotency-Key header " +
-            "(handled vendor-side) rather than blind re-POSTs after an " +
-            "uncertain response.",
+            "Uncertain response (timeout, lost body): treat each run as " +
+            "a new paid call - this connector's input contract does not " +
+            "forward custom headers, so the vendor's Idempotency-Key " +
+            "retry header is not reachable through it. Verify before " +
+            "re-posting rather than blind re-POSTs.",
         ],
     },
     endpoint: "/chat/completions",
